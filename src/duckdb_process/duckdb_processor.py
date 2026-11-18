@@ -5,6 +5,7 @@ import duckdb  # type: ignore
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
+from file_sources import source_path
 
 
 class DuckDBProcessor:
@@ -33,12 +34,8 @@ class DuckDBProcessor:
                 default="csv",
             )
 
-        path_obj = None
-        if file_type.lower() == "csv":
-            path_obj = self.fake_csvs_dir / "*.csv"
-        elif file_type.lower() == "json":
-            path_obj = self.fake_jsons_dir / "*.json"
-        else:
+        path_obj = source_path(file_type, self.fake_csvs_dir, self.fake_jsons_dir)
+        if path_obj is None:
             self.console.print(
                 f"[bold red]Error:[/bold red] Unsupported file type: {file_type}. Choose 'csv' or 'json'."
             )
@@ -50,22 +47,18 @@ class DuckDBProcessor:
         try:
             con = duckdb.connect()
 
-            # Load data once into memory
             con.execute(f"""
             COPY (SELECT * FROM '{path_obj}') TO 'people.parquet' (FORMAT PARQUET);
             CREATE VIEW people AS SELECT * FROM 'people.parquet';
             """)
             self.console.print("Database initialization complete.")
 
-            # Count total rows
             total_rows = con.execute("SELECT COUNT(*) FROM people").fetchone()
             self.console.print(f"Total rows across all files: {total_rows}")
 
-            # Describe
             self.console.print("Schema of the 'people' table:")
             self.console.print(con.execute("DESCRIBE people").fetchdf())
 
-            # Aggregate data
             result = con.execute("""
             SELECT name, AVG(age) AS avg_age
             FROM people
@@ -77,7 +70,6 @@ class DuckDBProcessor:
             self.console.print("Top 5 names with average age > 30:")
             self.console.print(result)
 
-            # Filter and export
             output_file = self.data_dir / f"filtered_duckdb_{file_type}.csv"
             con.execute(f"""
             COPY (

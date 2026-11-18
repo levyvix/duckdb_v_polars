@@ -6,6 +6,7 @@ import polars as pl
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
+from file_sources import source_path
 
 
 @dataclass
@@ -84,12 +85,10 @@ class DataIngestorService:
         if engine.lower() == "sqlite":
             self.console.print("[bold blue]Starting data ingestion into SQLite...[/bold blue]")
 
-            path_obj = None
-            if file_type.lower() == "csv":
-                path_obj = self.fake_csvs_dir / "*.csv"
-            elif file_type.lower() == "json":
-                path_obj = self.fake_jsons_dir / "*.json"
-            else:
+            path_obj = source_path(
+                file_type, self.fake_csvs_dir, self.fake_jsons_dir
+            )
+            if path_obj is None:
                 self.console.print(
                     f"[bold red]Error:[/bold red] Unsupported file type: {file_type}. Choose 'csv' or 'json'."
                 )

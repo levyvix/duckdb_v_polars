@@ -41,7 +41,6 @@ class DataConverter:
                 "[bold blue]Starting incremental CSV to Parquet conversion...[/bold blue]"
             )
 
-            # 1. Discover which CSVs have already been converted
             converted = {f.stem for f in self.parquets_dir.glob("*.parquet")}
 
             csv_files_to_convert = [

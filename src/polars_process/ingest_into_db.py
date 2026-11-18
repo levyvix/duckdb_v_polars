@@ -22,11 +22,9 @@ def ingest_to_database(df: pl.DataFrame, db_uri: str, table_name: str):
 
 
 if __name__ == "__main__":
-    # Read files
     file_path = f"data/fake_{FILE_TYPE}s/*.{FILE_TYPE}"
     df = read_files(file_path, FILE_TYPE)
 
-    # Write to database
     db_uri = "sqlite:///data/example.db"
     table_name = "my_table"
     ingest_to_database(df, db_uri, table_name)

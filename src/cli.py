@@ -5,21 +5,20 @@ from rich.panel import Panel
 from rich import print as rprint
 from faker import Faker
 from typing import Optional
-from pathlib import Path
 
-# Import configuration
 from config import (
     DATA_DIR,
     FAKE_CSVS_DIR,
     FAKE_JSONS_DIR,
     PARQUETS_DIR,
     SQLITE_DB_PATH,
+    ensure_data_directories,
 )
 
-# Import services
 from data_generator import DataGenerator
 from data_converter import DataConverter
 from data_ingestor import DataIngestorService
+from file_sources import source_path
 from polars_process.polars_processor import PolarsProcessor
 from duckdb_process.duckdb_processor import DuckDBProcessor
 from polars_process.polars_streaming import (
@@ -35,22 +34,20 @@ from polars_process.gpu_engine import (
     test_streaming_gpu,
 )
 
-console = Console()
 app = typer.Typer(
     help="A CLI for processing and generating data with Polars and DuckDB."
 )
 
-# Initialize core dependencies
+console = Console()
 faker_instance = Faker()
-prompt_instance: Prompt = Prompt()  # Added type hint
+prompt_instance: Prompt = Prompt()
 
-# Initialize services with their dependencies
 data_generator_service = DataGenerator(
     fake=faker_instance,
     fake_csvs_dir=FAKE_CSVS_DIR,
     fake_jsons_dir=FAKE_JSONS_DIR,
     console=console,
-    prompt=prompt_instance,  # Pass the prompt instance
+    prompt=prompt_instance,
 )
 data_converter_service = DataConverter(
     fake_csvs_dir=FAKE_CSVS_DIR,
@@ -78,6 +75,11 @@ duckdb_processor_service = DuckDBProcessor(
     console=console,
     prompt=prompt_instance,
 )
+
+
+@app.callback()
+def initialize_cli() -> None:
+    ensure_data_directories()
 
 
 @app.command(name="generate", help="Generate fake data (CSV or JSON).")
@@ -171,12 +173,8 @@ def process_data(
             f"[bold blue]Starting Polars streaming processing for {file_type.upper()} files...[/bold blue]"
         )
         try:
-            path_obj: Optional[Path] = None
-            if file_type.lower() == "csv":
-                path_obj = FAKE_CSVS_DIR / "*.csv"
-            elif file_type.lower() == "json":
-                path_obj = FAKE_JSONS_DIR / "*.json"
-            else:
+            path_obj = source_path(file_type, FAKE_CSVS_DIR, FAKE_JSONS_DIR)
+            if path_obj is None:
                 rprint(
                     f"[bold red]Error:[/bold red] Unsupported file type: {file_type}. Choose 'csv' or 'json'."
                 )
@@ -224,12 +222,8 @@ def process_data(
             f"[bold blue]Starting Polars GPU processing for {file_type.upper()} files...[/bold blue]"
         )
         try:
-            path_obj: Optional[Path] = None
-            if file_type.lower() == "csv":
-                path_obj = FAKE_CSVS_DIR / "*.csv"
-            elif file_type.lower() == "json":
-                path_obj = FAKE_JSONS_DIR / "*.json"
-            else:
+            path_obj = source_path(file_type, FAKE_CSVS_DIR, FAKE_JSONS_DIR)
+            if path_obj is None:
                 rprint(
                     f"[bold red]Error:[/bold red] Unsupported file type: {file_type}. Choose 'csv' or 'json'."
                 )
@@ -288,7 +282,4 @@ def process_data(
 
 
 if __name__ == "__main__":
-    app()
-else:
-    # This ensures the app runs even if the module is imported
     app()
